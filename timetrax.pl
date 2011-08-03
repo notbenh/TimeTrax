@@ -107,7 +107,7 @@ sub report {
 
 sub report_log {
    my $c = shift;
-   #warn q{REPORT LOG};
+   warn q{REPORT LOG};
 
    my @data = read_file($c->stash->{log_file});
    push @data, sprintf( q{[%s] [automated] now }, join q{ },split /\s+/, qx{date} );
@@ -165,7 +165,7 @@ sub edit {
 #---------------------------------------------------------------------------
 sub fetch_timecard {}
 sub parse_timecard {}
-sub report_timecard {}
+sub report_timecard { warn 'TODO: make this';}
 
 #---------------------------------------------------------------------------
 #  GO 

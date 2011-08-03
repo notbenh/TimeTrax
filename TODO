@@ -1,0 +1,12 @@
+- ditch the App::Rad stuff
+- build a single TimeTrax obj that does the work
+- pick a less verbose API with something like a trax command
+
+IDEAS:
+
+trax PROJECT doing some stuff
+... do stuff
+trax PROJECT some other stuff
+... do stuff
+trax - stop
+

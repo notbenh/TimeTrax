@@ -1,0 +1,6 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $cmd = sprintf q{timetrax.pl add --p=%s}, join ' ', @ARGV;
+print qx{$cmd};
