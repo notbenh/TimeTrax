@@ -151,10 +151,11 @@ sub email {
 #---------------------------------------------------------------------------
 sub edit {
    my $c = shift;
+   my $type = $c->argv->[0] || '';
    my $cmd = join ' ', $ENV{EDITOR} || $c->config->{editor} || 'vim' , 
-                       $c->stash->{ ($c->argv->[0] eq 'config')   ? 'config_file' 
-                                   :($c->argv->[0] eq 'timecard') ? 'timecard_file' 
-                                   :                                'log_file' 
+                       $c->stash->{ ($type eq 'config')   ? 'config_file' 
+                                   :($type eq 'timecard') ? 'timecard_file' 
+                                   :                        'log_file' 
                                   };
    exec($cmd);
 }
