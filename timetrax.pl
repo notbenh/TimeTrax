@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/env perl 
 
 use strict;
 use warnings;
@@ -8,6 +8,7 @@ use YAML qw{LoadFile DumpFile};
 use Data::Dumper; sub D (@) {print Dumper(@_)};
 use List::Util qw{max sum};
 use Date::Parse;
+use POSIX qw{strftime};
 
 #---------------------------------------------------------------------------
 #  Setup, mostly documentation
@@ -39,12 +40,16 @@ sub setup {
       edit   => 'start up an editor to modify either the log or config
                   Will first look for an evn var EDITOR, you can also specify "editor" in the config file.
                   By default it picks log but if you "timetrax.pl edit config" then you will edit the config.',
+      last   => 'tail the log file'
    });
 }
 
 #set the report action as our default
 sub default {
-   shift->execute('report');
+   my $c = shift;
+   #warn sprintf q{DEFAULT TRIPPED AS %s is not a known commmand}, $c->cmd;
+   unshift @{$c->argv}, $c->cmd;
+   $c->execute('report');
 }
 
 #---------------------------------------------------------------------------
@@ -99,20 +104,69 @@ sub add {
 #dispatch to the diffrent report types
 sub report {
    my $c = shift;
-   return (! defined $c->argv->[0] )     ? report_log($c)
+   return (! defined $c->argv->[0]     ) ? report_log($c)
         : ($c->argv->[0] eq 'timecard' ) ? report_timecard($c)
+        : ($c->argv->[0] =~ m/ost/     ) ? report_OST_tiny($c)
+        : ($c->argv->[0] =~ m/OST/     ) ? report_OST($c)
         :                                  report_log($c) ;
 }
 
+sub report_OST_tiny {
+  require Date::Simple;
+  my $c = shift;
+  my $report = report_OST($c);
+  my $total  = 0;
+  my $out;
+  my @data_set = map{[split '\s*,\s*']} split /\n/, [$report =~ m/^.+---+.*?\n(.*)/xms]->[0];
+  
+  foreach my $line ( @data_set ) {
+    my ($date,$note,$time) = split '\s*,\s*', $line;
+    $total += $line->[2];
+    $out .= sprintf qq{%s, % 8s, %0.2f\n}, @$line;
+  }
+
+  $out .= sprintf qq{%d day TOTAL: %0.2f\n} 
+                , ( str2time($data_set[$#data_set][0]) - str2time($data_set[0][0]) )/60/60/24 # convert last - first to days
+                
+                , $total
+  
+}
+
+sub report_OST {
+   my $c = shift;
+   #warn q{REPORT OST};
+   sub parse ($) { shift =~ m{\[(.*?)\] (?:\[(.*?)\]\s?)?(.*)} };
+
+   my @data = map{ my $x=[parse($_)];
+                   my $timestamp = str2time($x->[0]);
+                   my @timeparts = strptime($x->[0]);
+                   push @$x,$timestamp,strftime('%D',@timeparts[0 .. 5]);
+                   $x
+                 } read_file($c->stash->{log_file})
+                 , sprintf q{[%s] [automated] now}, map{chomp;$_} qx{date} # toss in a marker for now so that there will always be 'one more'
+                 ;
+
+   require Math::Round;
+   my $report ;
+   for( 0..scalar(@data) ) {
+      next unless defined $data[$_]->[1] && $data[$_]->[1] =~ m/OST/i; #only deal with OST trax
+      #warn Dumper($data[$_]);
+      $report .= sprintf qq{%s,%s,%0.2f\n}
+                       , $data[$_][4] # human date D/M/Y style
+                       , $data[$_][2] # note
+                       , Math::Round::nhimult(.25, ($data[$_+1][3] - $data[$_][3])/60/60 )
+                       ;
+   }
+   return $report;
+}
 
 sub report_log {
    my $c = shift;
-   warn q{REPORT LOG};
+   #warn q{REPORT LOG};
 
    my @data = read_file($c->stash->{log_file});
    push @data, sprintf( q{[%s] [automated] now }, join q{ },split /\s+/, qx{date} );
 
-   sub parse ($) { shift =~ m{\[(.*?)\] (?:\[(.*?)\]\s?)?(.*)} };
 
    my $report = {};
 
@@ -160,6 +214,9 @@ sub edit {
    exec($cmd);
 }
 
+sub last {
+  exec(qw{/usr/bin/env tail}, shift->stash->{'log_file'});
+}
 
 #---------------------------------------------------------------------------
 #  TIMECARD PROCESSING
