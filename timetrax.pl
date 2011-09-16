@@ -112,7 +112,6 @@ sub report {
 }
 
 sub report_OST_tiny {
-  require Date::Simple;
   my $c = shift;
   my $report = report_OST($c);
   my $total  = 0;
