@@ -2,5 +2,8 @@
 use strict;
 use warnings;
 
-my $cmd = sprintf q{timetrax.pl add --p=%s}, join ' ', @ARGV;
+my $proj = shift @ARGV;
+my $note = join ' ', @ARGV;
+$note =~ s/,//g;
+my $cmd = sprintf q{timetrax.pl add --p=%s %s}, $proj, $note;
 print qx{$cmd};

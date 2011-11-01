@@ -108,33 +108,100 @@ sub report {
         : ($c->argv->[0] eq 'timecard' ) ? report_timecard($c)
         : ($c->argv->[0] =~ m/ost/     ) ? report_OST_tiny($c)
         : ($c->argv->[0] =~ m/OST/     ) ? report_OST($c)
+        : ($c->argv->[0] =~ m/z/       ) ? report_Z_tiny($c)
         :                                  report_log($c) ;
 }
 
-sub report_OST_tiny {
-  my $c = shift;
-  my $report = report_OST($c);
-  my $total  = 0;
-  my $out;
-  my @data_set = map{[split '\s*,\s*']} split /\n/, [$report =~ m/^.+---+.*?\n(.*)/xms]->[0];
-  
-  foreach my $line ( @data_set ) {
-    my ($date,$note,$time) = split '\s*,\s*', $line;
-    $total += $line->[2];
-    $out .= sprintf qq{%s, % 8s, %0.2f\n}, @$line;
-  }
-
-  $out .= sprintf qq{%d day TOTAL: %0.2f\n} 
-                , ( str2time($data_set[$#data_set][0]) - str2time($data_set[0][0]) )/60/60/24 # convert last - first to days
-                
-                , $total
-  
+sub report_OST_tiny { 
+  report_to_csv_by_filter(shift, filter => 'OST', pay_rate => 30 ); 
 }
 
 sub report_OST {
+  report_raw_by_filter(shift, qr/OST/m);
+}
+
+sub report_Z_tiny { 
+  my @report = split /\n/, report_to_csv_by_filter(shift, filter => 'Z', pay_rate => 36 ); 
+  my $totals = pop @report;
+  my $stash  = {};
+  my @dates;
+
+  foreach (@report) {
+    my ($date,$note,$time) = split /,\s+/, $_;
+    push @dates, $date;
+    $stash->{$date}->{time} += $time;
+    push @{ $stash->{$date}->{note} }, $note;
+  }
+
+  my $out;
+  foreach my $date (@dates) {
+    next unless $stash->{$date}; # we've not processed this date yet
+    my $task = join qq{\nand }, @{ $stash->{$date}->{note} };
+    $out .= sprintf qq{%s, % 10s, %0.2f\n}, $date, $task, $stash->{$date}->{time};
+    delete $stash->{$date};
+  }
+
+  $out .= $totals;
+
+  $out;
+}
+
+
+
+
+
+
+
+
+
+
+
+=pod
+print report_to_csv_by_filter( $c, filter   => qr{OST}m
+                                 , pay_rate => 30 # hourly
+                                 );
+=cut
+sub report_to_csv_by_filter {
+  my $c = shift;
+  my $opts = {@_}; 
+  my $report = report_raw_by_filter($c,$opts->{filter});
+  my $total  = 0;
+  my $out;
+
+  my $data = {};
+  # only deal with entries since my last invoice
+  # combine any like tasks on the same day 
+  foreach my $entry ( map{[split '\s*,\s*']} split /\n/, [$report =~ m/^(?:.+---+.*?\n)?(.*)/xms]->[0] ) {
+    my ($date,$task,$time) = @$entry;
+    $total += $time;
+    $data->{$date}->{$task} += $time;
+  }
+
+  sub D2S ($) { my @x = split '/', shift; join '', $x[2],$x[0],$x[1] } # 09/10/11 => 110910 so 01/01/12 is after 12/30/11
+
+  my @dates = sort {D2S $a <=> D2S $b} keys %$data;
+  foreach my $date (@dates) {
+    while(my ($task,$time) = each( %{ $data->{$date} } ) ) {
+      $out .= sprintf qq{%s, % 10s, %0.2f\n}, $date, $task, $time;
+    }
+  }
+
+  $out .= sprintf qq{%d day TOTAL: %0.2f @ \$%0.2f/h (\$%0.2f)\n} 
+                , ( str2time($dates[-1]) - str2time($dates[0]) )/60/60/24 # convert last - first to days
+                , $total
+                , $opts->{pay_rate}
+                , ($total * $opts->{pay_rate});
+}
+
+sub report_raw_by_filter {
    my $c = shift;
-   #warn q{REPORT OST};
-   sub parse ($) { shift =~ m{\[(.*?)\] (?:\[(.*?)\]\s?)?(.*)} };
+   my $filter = shift;
+   $filter = ref($filter) eq 'Regexp' ? $filter : qr{$filter}m; # make sure that it's a regex
+   sub parse ($) {
+     my $line = shift;
+     $line =~ s/[,]//g;
+     $line =~ m{\[(.*?)\] (?:\[(.*?)\]\s?)?(.*)} 
+   };
 
    my @data = map{ my $x=[parse($_)];
                    my $timestamp = str2time($x->[0]);
@@ -144,12 +211,10 @@ sub report_OST {
                  } read_file($c->stash->{log_file})
                  , sprintf q{[%s] [automated] now}, map{chomp;$_} qx{date} # toss in a marker for now so that there will always be 'one more'
                  ;
-
    require Math::Round;
    my $report ;
    for( 0..scalar(@data) ) {
-      next unless defined $data[$_]->[1] && $data[$_]->[1] =~ m/OST/i; #only deal with OST trax
-      #warn Dumper($data[$_]);
+      next unless defined $data[$_]->[1] && $data[$_]->[1] =~ $filter; #only deal entries that match filter
       $report .= sprintf qq{%s,%s,%0.2f\n}
                        , $data[$_][4] # human date D/M/Y style
                        , $data[$_][2] # note
