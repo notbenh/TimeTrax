@@ -136,7 +136,7 @@ sub report_Z_tiny {
   my $out;
   foreach my $date (@dates) {
     next unless $stash->{$date}; # we've not processed this date yet
-    my $task = join qq{\nand }, @{ $stash->{$date}->{note} };
+    my $task = join qq{ | }, @{ $stash->{$date}->{note} };
     $out .= sprintf qq{%s, % 10s, %0.2f\n}, $date, $task, $stash->{$date}->{time};
     delete $stash->{$date};
   }
