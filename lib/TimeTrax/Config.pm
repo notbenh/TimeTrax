@@ -10,7 +10,7 @@ use Data::Dumper;
 sub new {
   my $class = shift;
   my $self  = {file => File::Spec->rel2abs( shift 
-                                         || $ENV{TIMETRAX_CONFIG} 
+                                         || $ENV{TIMETRAX_CONFIG_FILE} 
                                          || File::Spec->catfile($ENV{HOME}, '.timetrax.yaml' )
                                           )
               };
