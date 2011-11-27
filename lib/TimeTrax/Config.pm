@@ -18,6 +18,8 @@ sub new {
   $self->{conf} = LoadFile($self->{file});
   return bless $self, $class;
 }
+sub file { shift->{file} };
+sub conf { shift->{conf} };
 
 sub report {
   my $self = shift;
