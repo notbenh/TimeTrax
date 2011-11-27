@@ -1,9 +1,0 @@
-#!/usr/bin/perl
-use strict;
-use warnings;
-
-my $proj = shift @ARGV;
-my $note = join ' ', @ARGV;
-$note =~ s/,//g;
-my $cmd = sprintf q{timetrax.pl add --p=%s %s}, $proj, $note;
-print qx{$cmd};
