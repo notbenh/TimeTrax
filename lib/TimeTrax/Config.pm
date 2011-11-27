@@ -24,7 +24,7 @@ sub conf { shift->{conf} };
 sub report {
   my $self = shift;
   my $data = { %{ $self->{conf} } }; # CLONE
-  foreach( @_ ) {
+  foreach( grep{defined} @_ ) {
     die qq{ $_ was not found in your config file } unless $data->{$_};
     $data = $data->{$_};
   }

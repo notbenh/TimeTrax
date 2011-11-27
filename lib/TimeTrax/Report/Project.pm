@@ -5,6 +5,8 @@ use v5.10;
 use base qw{TimeTrax::Report};
 use Data::Dumper;
 require Math::Round;
+use Try::Tiny;
+require POSIX;
 
 =pod
 
@@ -26,25 +28,47 @@ require Math::Round;
 sub report {
   my $self = shift;
   my $project = shift;
-  my $config  = $self->config->report($project)
-             || $self->config->report('default');
+  my $config;
+  try   { $config = $self->config->report($project) }
+  catch { $config = $self->config->report('default')};
   my $total= {};
-  
-die Dumper($config);
-  foreach my $i ( $self->log->parse( $project ) ) {
-    $total->{ 
-                       , Math::Round::nhimult(.25, ($data[$_+1][3] - $data[$_][3])/60/60 )
 
-    
-    
+  # tally up all the given tasks for a day, combining any duplicates
+  foreach my $i ( $self->log->parse( $project ) ) {
+    if ($i->{task} =~ m/----/ ) {
+      $total={};
+      next;
+    }
+    $i->{task} =~ s/^\s*//;
+    $i->{task} =~ s/\s*$//;
+    my $date = POSIX::strftime( "%D", map{$i->{date_parsed}->[$_]} 0..5 );
+    $total->{ $date }->{ $i->{task} } += $i->{seconds_spent};
+  }
+  my $hours_total=0;
+  my $output = '';
+  sub YMD($) { my @d = split m{/}, shift; join '', @d[2,0,1] }
+  my @dates  = sort{YMD $a <=> YMD $b} keys %$total;
+  foreach my $date ( @dates ) {
+    foreach my $task ( sort keys %{ $total->{$date} } ) {
+      my $hours = Math::Round::nhimult($config->{round}, $total->{$date}->{$task}/60/60 );
+      $hours_total += $hours;
+      $output .= sprintf qq{%s, %s, % 2.2f\n}
+                       , $date
+                       , $task
+                       , $hours
+                       ;
+    }
   }
 
-  my $format = sprintf q{%% %ds: %%s}
-                     , length([sort{length($b) <=> length($a)} keys %$total]->[0]) # longest project name
-                     ; 
-  return join qq{\n}
-            , map{ sprintf $format, $_, $self->sec2hm($total->{$_});
-                 } sort { $total->{$a} <=> $total->{$b} } keys %$total ;
+  use Date::Parse;
+  $output .= sprintf qq{%d DAY TOTAL: % 2.2f @ \$%d => \$%0.2f\n}
+                   , ( str2time($dates[-1]) - str2time($dates[0]) )/60/60/24 # convert last - first to days
+                   , $hours_total
+                   , $config->{rate}
+                   , ($hours_total * $config->{rate})
+                   ;
+  return $output;
+
 }
 
 

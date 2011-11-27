@@ -32,6 +32,8 @@ sub parse{
     $lines[$i] = { line => $lines[$i]
                  , project => $proj
                  , date => $date
+                 , date_parsed => [strptime($date)]
+                 , date_stamp  => str2time($date)
                  , date_next => $date_next
                  , seconds_spent => (str2time($date_next) - str2time($date))
                  , task => $task

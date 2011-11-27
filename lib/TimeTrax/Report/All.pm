@@ -9,7 +9,9 @@ sub report {
   my $self = shift;
   my $total={};
   foreach my $i ( $self->log->parse ) {
-    $total->{$i->{project}} += $i->{seconds_spent};
+    $total->{$i->{project}} += $i->{seconds_spent} 
+      if $i->{project}
+      && $i->{seconds_spent};
   }
 
   my $format = sprintf q{%% %ds: %%s}
@@ -17,7 +19,7 @@ sub report {
                      ; 
   return join qq{\n}
             , map{ sprintf $format, $_, $self->sec2hm($total->{$_});
-                 } sort { $total->{$a} <=> $total->{$b} } keys %$total ;
+                 } sort { $total->{$a} <=> $total->{$b} } grep {defined} keys %$total ;
 }
 
 

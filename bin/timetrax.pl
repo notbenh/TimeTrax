@@ -33,9 +33,9 @@ ACTIONS:
 ENDHELP
 
 
-my ($action) = shift @ARGV;
+my ($action) = @ARGV ? shift @ARGV : undef ;
 
-die $help if $action eq 'help';
+die $help if $action && $action eq 'help';
 
 my $tt = TimeTrax->new();
 given( $action ) {
@@ -53,16 +53,13 @@ given( $action ) {
                    eval qq{require $class};
                    say $class->new->report(@ARGV);
                  }
-  default        { given( scalar(@ARGV) ) { 
-                     when(0) { require TimeTrax::Report::All;
-                               say TimeTrax::Report::All->new->report;
-                             }
-                     when(1) { require TimeTrax::Report::Project;
-                               say TimeTrax::Report::Project->new->report(@ARGV);
-                             }
-                     when(3) { $tt->log->set(shift @ARGV, join ' ', @ARGV) }
-                     default { die $help }
-                   }
+  when ( undef ) { require TimeTrax::Report::All;
+                   say TimeTrax::Report::All->new->report;
+                 }
+  default        { $action ? do{ require TimeTrax::Report::Project;
+                                 say TimeTrax::Report::Project->new->report($action);
+                               }
+                           : do{ $tt->log->set($action, join ' ', @ARGV) };
                  }
 };
 
