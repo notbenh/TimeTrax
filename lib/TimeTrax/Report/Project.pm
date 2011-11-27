@@ -61,10 +61,13 @@ sub report {
   }
 
   use Date::Parse;
-  $output .= sprintf qq{%d DAY TOTAL: % 2.2f @ \$%d => \$%0.2f\n}
+  $output .= sprintf qq{%d DAY TOTAL: % 2.2f @ \$%d => [ tax:\$%0.2f keep:\$%0.2f total:\$%0.2f ]
+\n}
                    , ( str2time($dates[-1]) - str2time($dates[0]) )/60/60/24 # convert last - first to days
                    , $hours_total
                    , $config->{rate}
+                   , ($hours_total * $config->{rate})*.2
+                   , ($hours_total * $config->{rate})*.8
                    , ($hours_total * $config->{rate})
                    ;
   return $output;
