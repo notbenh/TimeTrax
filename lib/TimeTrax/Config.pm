@@ -4,6 +4,8 @@ require File::Spec;
 use YAML qw{LoadFile DumpFile};
 
 # ABSTRACT: TimeTrax Config how to interface with the config file
+use Data::Dumper;
+
 
 sub new {
   my $class = shift;
@@ -19,30 +21,30 @@ sub new {
 
 sub report {
   my $self = shift;
-  my $data = { %{ $self{data} } }; # CLONE
-  foreach( @ARGV ) {
+  my $data = { %{ $self->{conf} } }; # CLONE
+  foreach( @_ ) {
     die qq{ $_ was not found in your config file } unless $data->{$_};
     $data = $data->{$_};
   }
-  use Data::Dumper;
-  warn Dumper($data); # TODO this should be nicer
+  return $data; 
 }
 
 sub set {
-  my ($self, $project, $key, $value) = @_;
-  $self{data}{$project}{$key} = $value;
-  say 'updated' if DumpFile($self{file}, $self{data});
+  my $self = shift;
+  $self{conf} = ref($_[1]) eq 'HASH' ? $self->set_multi(@_)
+                                     : $self->set_single(@_)
+                                     ; 
+  say 'updated' if DumpFile($self->{file}, $self->{conf});
 }
 
-
-our $AUTOLOAD; # need to scope AUTOLOAD
-sub AUTOLOAD {
-  my $self  = shift;
-  my ($key) = $AUTOLOAD =~ m/.*::(.*?)$/; #pluck just the method name
-  $self->{$key} = shift
-    if @_;
-  #die qq{$key does not exist in $self} unless (ref($self) && $self->{$key}) || $self->can($key) ;
-  return $self->{$key};
+sub set_multi { # set(project=>{key => value, key=> value})
+  my ($self,$project,$data) = @_;
+  $self->{conf}{$project} = $data;
 }
+sub set_single { # set(project => key => value)
+  my ($self,$project,$key,$value) = @_;
+  $self->{conf}{$project}{$key} = $value;
+}
+
 
 1;
