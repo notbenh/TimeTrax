@@ -1,12 +1,21 @@
-- ditch the App::Rad stuff
-- build a single TimeTrax obj that does the work
-- pick a less verbose API with something like a trax command
+- ditch the App::Rad stuff in favor of a Moo object struct
+- pick a less verbose API 
 
 IDEAS:
 
-trax PROJECT doing some stuff
-... do stuff
-trax PROJECT some other stuff
-... do stuff
-trax - stop
+alias t='/usr/bin/env timetrax.pl'
 
+[RECORD TIME]
+t PROJECT TASK   : start doing task on project
+
+[REPORTS]
+t                : overall report
+t PROJECT        : project reprot
+t report PROJECT : project report
+t csv PROJECT    : project report in csv
+
+[CONFIG]
+t config                   : review entire config file
+t config PROJECT           : review just this project's configs
+t config PROJECT KEY       : review this aspect of a project config 
+t config PROJECT KEY VALUE : set/update this key for this project
