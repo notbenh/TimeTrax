@@ -28,6 +28,9 @@ require POSIX;
 sub report {
   my $self = shift;
   my $project = shift;
+  return qq{No project '$project' found!} unless  $self->log->parse( $project );
+
+  # TODO this really should be a merge of project and default so that you can specify only the needed aspects in the project
   my $config;
   try   { $config = $self->config->report($project) }
   catch { $config = $self->config->report('default')};

@@ -56,10 +56,11 @@ given( $action ) {
   when ( undef ) { require TimeTrax::Report::All;
                    say TimeTrax::Report::All->new->report;
                  }
-  default        { $action ? do{ require TimeTrax::Report::Project;
-                                 say TimeTrax::Report::Project->new->report($action);
-                               }
-                           : do{ $tt->log->set($action, join ' ', @ARGV) };
+  default        { @ARGV ? do{ $tt->log->set($action, join ' ', @ARGV) }
+                         : do{ require TimeTrax::Report::Project;
+                               say TimeTrax::Report::Project->new->report($action);
+                             }
+                         ;
                  }
 };
 
